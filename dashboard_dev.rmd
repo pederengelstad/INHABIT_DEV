@@ -1,0 +1,377 @@
+---
+title: "INHABIT"
+resource_files:
+- mgmt/mgmt_areas.dbf
+- mgmt/mgmt_areas.prj
+- mgmt/mgmt_areas.qpj
+- mgmt/mgmt_areas.shx
+- states/cb_2017_us_state_500k_conus_simple.cpg
+- states/cb_2017_us_state_500k_conus_simple.dbf
+- states/cb_2017_us_state_500k_conus_simple.prj
+- states/cb_2017_us_state_500k_conus_simple.qpj
+- states/cb_2017_us_state_500k_conus_simple.shx
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+---
+
+<style type='text/css'>
+
+img {
+    max-width: 100%;
+    min-height: 100%;
+    height: auto;
+}
+
+</style>
+
+```{r setup, include=FALSE}
+library(leaflet)
+library(flexdashboard)
+library(rgdal)
+library(shinyWidgets)
+library(DT)
+library(magrittr)
+library(knitr)
+library(kableExtra)
+
+kde_poly = readOGR("kde_3857_final.sqlite", GDAL1_integer64_policy = TRUE)
+species_pts = readOGR("pres_pts3857.sqlite")
+states = readOGR("states/cb_2017_us_state_500k_conus_simple.shp", GDAL1_integer64_policy = T)
+mgmt_areas = readOGR("mgmt/mgmt_areas.shp", GDAL1_integer64_policy = T)
+
+mgmt.list = as.list(mgmt_areas$name)
+sp_list = as.list(read.csv('sp_list.csv', header = T, stringsAsFactors = F))
+sp_dt = read.csv('sp_data_summary.csv', header = T, stringsAsFactors = F)
+sp_dt = sp_dt[order(sp_dt$Est_Suitable_Area_Acres, decreasing = T),]
+cred.table = read.csv(file = "CredTable.csv", header = T, stringsAsFactors = F, encoding = "ISO-8859-1", fileEncoding = "ISO-8859-1")
+pred.info = read.csv(file = "predictorInformation.csv", header = T, stringsAsFactors = F, encoding = "ISO-8859-1", fileEncoding = "ISO-8859-1")
+
+# Define all reactive elements necessary for the map app here. For whatever reason
+# they won't show up if they're defined in the app server. Not sure why...
+mgmt_shp = reactive({subset(mgmt_areas, name %in% input$mgmt)})
+
+distro_shp = reactive({if(input$known_distro=="yes"){
+  kde_poly[kde_poly$species==gsub(' ','',tolower(input$sp_select)),]
+} else {
+    kde_poly = NULL
+  }
+})
+
+pres_pts = reactive({if(input$pres_button=="yes"){
+  species_pts[species_pts$species==gsub(' ','',tolower(input$sp_select)),]
+} else {
+    species_pts = NULL
+  }
+})
+
+model = reactive(
+  if(input$slider=='0.01'){
+    "1st"
+  } else if(input$slider=='0.1'){
+    "10th"}
+    else if(input$slider=='0.9'){
+    "90th"}
+    else if(input$slider=='0.95'){
+    "95th"}
+    else if(input$slider=='MPP'){
+    "MPP"}
+    else if(input$slider=='MaxSSS'){
+    "MaxSensSpec"
+  })
+
+mess = reactive(
+  if(input$mess=='yes'){
+    "CONUS_MESS"
+  } else {
+    "CONUS"})
+
+species = reactive({gsub(' ','',tolower(input$sp_select))})
+
+tilesURL = reactive(
+    paste0("http://pederengelstad.github.io/",gsub(' ','',tolower(input$sp_select)),'/',model(),"/",mess(),"/{z}/{x}/{y}.png",sep=''))
+```
+
+Inputs {.sidebar}
+=======================================================================
+<img class="img-responsive" src="logo.png" max-width=100%>
+<br />
+
+#### **DRAFT**
+##### This tool is designed to display outputs from models of exotic species as completed by USGS FORT utilizing the <a href="https://pubs.er.usgs.gov/publication/fs20143007" target="_blank">Software for Assisted Habitat Modeling</a>
+
+
+```{r}
+pickerInput(inputId = 'sp_select', label = 'Species of interest'
+            , choices = sp_list$common
+            , width = 'auto'
+            , choicesOpt = list(subtext = paste0("(", sp_list$latin, ')', sep=''))
+            , options = list(title = "i.e. Fountaingrass OR Pennisetum", `live-search`=T)
+)
+
+selectizeInput(inputId = 'mgmt'
+               , label = 'Management Areas (Simplified)' 
+               , choices = mgmt.list
+               , width = 'auto'
+               , multiple = T
+               , options=list(placeholder = "i.e. EPMT: Lake Mead"
+                              ,onInitialize = I('function() { this.setValue(""); }'))
+               )
+```
+
+___
+
+``` {r}
+sliderTextInput(inputId = "slider", label = "Choose your model threshold:"
+                , choices = list("MPP", "0.01", "0.1","MaxSSS", "0.9", "0.95")
+                , grid = T, hide_min_max = F, force_edges = T, width = '100%')
+```
+
+###### <span style="color: grey">Lower values represent model results that are more inclusive. Higher values restrict the map output to areas where model confidence is higher. *MPP* represents the minimum presence threshold detected by the model. *MaxSSS* represents the optimal balance between accurate occurrences (sensitivity) and non-occurrences (specificity).</span>
+
+<br>
+
+``` {r}
+radioButtons(inputId = "mess",choices=c("yes","no"), selected = "yes", label='Restrict model extrapolation?', width = '100%')
+```
+
+###### <span style="color: grey"> If 'yes', the map will only display areas where environmental characteristics are inside the range of the values used to develop the model. For example, a location with a minimum winter temperature of 12 C would be outside the range of -10 to 10 C used in model development. <a href="https://doi.org/10.1111/j.2041-210X.2010.00036.x" target="_blank">(Elith et al 2011)</a></span>
+
+<br />
+
+```{r}
+radioButtons(inputId = "known_distro",choices=c("yes","no"), selected = "no", label='Display Known Distribution?', width = '100%')
+```
+
+###### <span style="color: grey">If 'yes', the map will display the boundaries of the training data used to build the models.</span>
+
+<br />
+
+```{r}
+radioButtons(inputId = "pres_button",choices=c("yes","no"), selected = "no", label='Display Occurrence Points?', width = '100%')
+```
+
+###### <span style="color: grey">If 'yes', the map will display the occurrence points used to build the model.</span>
+
+Map Output
+=====================================
+
+```{r}
+shinyApp(ui = fillPage(tags$style(type = "text/css",
+    ".half-fill { width: 50%; height: 100%; }",
+    "#one { float: left; background-color: #ddddff; }",
+    "#two { float: right; background-color: #ccffcc; }"
+  ),
+    leafletOutput("map", height="100%")
+    ),
+  
+  server = function(input, output, session) {
+
+  output$map = renderLeaflet({
+    leaflet(options = leafletOptions(maxZoom = 10)) %>%
+      addProviderTiles(providers$CartoDB.DarkMatter, group = "Light", options = providerTileOptions(opacity = 0.8)) %>%
+      fitBounds(lat1 = 48.808461, lng1 = -123.967893, lat2 = 24.848766, lng2 = -68.816526) %>%
+      addPolygons(data = states, fill = 0, weight = 1.35, group = "states") %>%
+      addLegend(position = "topright"
+                , colors = c('#4b0000','#7f0000','#b30000','#d7301f'
+                             ,'#ef6548','#fc8d59','#fdbb84'
+                             ,'#fdd49e','#fee8c8','#fff7ec'),
+                labels = c("High","","","","","","","","", "Low"), 
+                title = "Model Agreement", 
+                opacity = 1,
+                labFormat = ) %>%
+      addLegend(position = "bottomright" 
+            , colors = c('blue','green','purple')
+            , labels = c("Mgmt Area", "Known Distro","Occ Points"), 
+            title = "Data Legend", opacity = 1) %>%
+      addScaleBar(position = 'bottomleft', options = scaleBarOptions(maxWidth = 200))
+      # addEasyButton(button = easyButton(icon = 'glyphicon-globe'
+      #                                   ,title = 'Reset view'
+      #                                   ,onClick = JS("function(btn, map) {
+      #                                                    map.fitBounds([
+      #                                                                  [48.808461, -123.967893],
+      #                                                                  [24.848766, -68.816526]
+      #                                                                  ]);
+      #                                                   var groupLayer = map.layerManager.getLayerGroup('distro');
+      #                                                   groupLayer.clearLayers();
+      #                                                   var groupLayer = map.layerManager.getLayerGroup('pres_pts');
+      #                                                   groupLayer.clearLayers();
+      #                                                   var groupLayer = map.layerManager.getLayerGroup('mgmt');
+      #                                                   groupLayer.clearLayers();
+      #                                                 }") ))
+    })
+  
+  observe({
+    conus_tile_url = tilesURL
+    if(!is.null(conus_tile_url)){
+      leafletProxy("map") %>%
+        clearGroup('conus') %>%
+        addTiles(urlTemplate = tilesURL(), options = tileOptions(tms = T), group = 'conus', layerId = 'conus')
+    } else {
+      leafletProxy("map") %>%
+        # Resets map back to default view upon deselection
+        fitBounds(lat1 = 48.808461, lng1 = -123.967893, lat2 = 24.848766, lng2 = -68.816526)
+}})
+
+  observe({
+    
+    m = mgmt_shp()
+
+    # Display the selected managment polygon
+    if(length(m)>0){
+      
+      bb = sp::bbox(m)
+      
+      leafletProxy("map") %>%
+      clearGroup('mgmt') %>%
+      addPolygons(fill = 0, data = mgmt_shp(), group = 'mgmt', weight = 2.5, opacity = 1, color = '#00E30B') %>%
+      fitBounds(lat1 = bb[2], lng1 = bb[1], lat2 = bb[4], lng2 = bb[3])
+    } else {
+      leafletProxy("map") %>%
+        clearGroup('mgmt') %>%
+        fitBounds(lat1 = 48.808461, lng1 = -123.967893, lat2 = 24.848766, lng2 = -68.816526)  
+    }
+})
+  
+  # Toggle KDE on and off
+  observe({
+    
+    d=distro_shp()
+    
+    if(!is.null(d)){
+      leafletProxy("map") %>% 
+        clearGroup( 'distro') %>%
+        addPolygons(data=distro_shp(), group='distro', color = "green", fill = 0)
+    } else {
+      leafletProxy("map") %>%
+        clearGroup('distro')
+      }
+    })
+  
+    # Toggle training points on and off
+  observe({
+    
+    p=pres_pts()
+    
+    if(!is.null(p)){
+      leafletProxy("map") %>%
+        clearGroup( 'pres_pts') %>%
+        addCircleMarkers(data=pres_pts(), group='pres_pts', color = "purple", radius = 0.3)
+    } else {
+        leafletProxy("map") %>%
+          clearGroup( 'pres_pts')
+      }
+    })
+  })
+
+```
+
+Variable Reponse Curves
+=====================================
+
+##### <span style="color: grey"> *These graphs plot the relative habitat suitability (y-axis) across the range of values for each predictor (x-axis). The red lines along the x-axis represent presence points with those values. Each line represents one model algorithm and background point generation method for a total of 10 lines possible; missing lines indicate the predictor was dropped from that model. The numbers in the top left of each graph represent the average relative importance of the predictor with the range across model algorithm/ background method combinations shown in parentheses. The graphs are arranged by relative importance, with the top left contributing most to models on average.*</span>
+
+<br>
+
+``` {r}
+output$vrc = renderImage({
+  filename <- normalizePath(file.path('./www',
+                              paste('ResponseCurves_', species(), '.png', sep='')))
+ 
+    # Return a list containing the filename and alt text
+    list(src = filename)
+}, deleteFile = F)
+
+imageOutput("vrc", height = "auto")
+```
+
+
+Data Summary
+=====================================
+
+```{r}
+
+#Filtered GAP's 'Fine Agency Level' layer by Mang_Name = 'NPS'
+fillPage(DT::renderDataTable(DT::datatable(sp_dt
+              , fillContainer = getOption("DT.fillContainer", TRUE)
+              , caption = "Summary information by National Park for a selected species and EPMT region. 'Known presence' indicates if presence locations from the park were available for model development. 'Established suitable area' is the number of acres suitable when suitability values between 0 and 1 were transformed to unsuitable and suitable categories by allowing 1% of the known locations to be classified as unsuitable. 'Percent of Park' is the percent of the park area that is classified as suitable. 'Minimum distance to Occurrence' is the minimum distance from the park boundary to a known occurrence used in model development. Boundaries generated from NPS IRMA (https://irma.nps.gov/DataStore/Reference/Profile/2224545?lnv=True)"
+              , colnames = c("Species", "EPMT Unit", "National Park", "Known Presence? (Count)"
+                             ,"Estimated Suitable Area (Acres)", "Percent of Park Area"
+                             ,"Minimum Distance to Occurrence (Miles)")
+              ,rownames = FALSE) %>% 
+  formatStyle(columns = c(1:7), 'text-align' = 'center') %>%
+  DT::formatPercentage(columns = 6)))
+```
+
+Model Credibility Assessment
+=====================================
+
+```{r}
+
+caption = "Model credibility reflects both input data attributes and methodological decisions. 
+          For each major element of the model development and delivery process, we provide an overview 
+          of problematic (red), acceptable (yellow), and ideal (green) practices. (Sofaer et al., 2019)"
+
+fillPage(HTML(
+  
+  kable(cred.table, row.names = F
+        , col.names = c('','','Interpret With Caution',colnames(cred.table[4:6]))
+        , caption = caption
+        , format = 'html'
+        , escape = F) %>%
+  kable_styling(position = "center"
+                , full_width = T
+                , bootstrap_options = c("condensed","bordered", "responsive"), font_size = 10) %>%
+  row_spec(row = 0:nrow(cred.table)) %>%
+           # , extra_css = c('border: 1px solid black;')) 
+  column_spec(1
+              # , width = '2cm'
+              , extra_css = 'webkit-transform: rotate(-90deg); -moz-transform: rotate(-90deg); -ms-transform: rotate(-90deg); -o-transform: rotate(-90deg); transform: rotate(-90deg);') %>%
+  column_spec(2:6,
+              # width = '5cm',
+              extra_css = 'vertical-align: middle;') %>%
+  column_spec(1,
+              # border_right = '1px solid black',
+              extra_css = 'text-orientation: upgright;') %>%
+  column_spec(2:6, color = 'black') %>%
+  column_spec(3, background = '#FB8686') %>%
+  column_spec(4, background = '#F4FDAD') %>%
+  column_spec(5, background = '#71F453') %>%
+  collapse_rows(1:2)  
+  )
+)
+
+```
+
+Additional Model Details
+=====================================
+
+```{r}
+
+var.text = "A list of the 66 candidate variables used in habitat modeling."
+
+fillPage(
+  HTML(
+    kable(x = pred.info
+          , caption = var.text
+          , col.names = c('Variable Name','Units','Long Description','Source')
+          , format = 'html'
+          , escape = F) %>%
+      kable_styling(position = "center"
+                    , full_width = T
+                    , bootstrap_options = c("condensed","bordered", "responsive")
+                    , font_size = 10)
+  )
+)
+
+```
+
+
+
+Downloads
+=====================================
+
+Here is where users will eventually find a list of download links in various formats.
+```{r}
+```
