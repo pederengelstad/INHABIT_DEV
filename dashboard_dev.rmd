@@ -369,9 +369,9 @@ fillPage(
 
 
 
-Downloads
+F.A.Q.
 =====================================
 
-Here is where users will eventually find a list of download links in various formats.
+Here is where users will eventually find a list of commonly asked questions that clarify the content of the tool.
 ```{r}
 ```
