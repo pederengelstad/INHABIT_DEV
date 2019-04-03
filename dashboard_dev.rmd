@@ -118,8 +118,11 @@ selectizeInput(inputId = 'mgmt'
                , options=list(placeholder = "i.e. EPMT: Lake Mead"
                               ,onInitialize = I('function() { this.setValue(""); }'))
                )
+
+radioButtons(inputId = "pres_button",choices=c("yes","no"), selected = "no", label='Display Occurrence Points?', width = '100%')
 ```
 
+###### <span style="color: grey">If 'yes', the map will display the occurrence points used to build the model.</span>
 ___
 
 ``` {r}
@@ -145,14 +148,6 @@ radioButtons(inputId = "known_distro",choices=c("yes","no"), selected = "no", la
 ```
 
 ###### <span style="color: grey">If 'yes', the map will display the boundaries of the training data used to build the models.</span>
-
-<br />
-
-```{r}
-radioButtons(inputId = "pres_button",choices=c("yes","no"), selected = "no", label='Display Occurrence Points?', width = '100%')
-```
-
-###### <span style="color: grey">If 'yes', the map will display the occurrence points used to build the model.</span>
 
 Map Output
 =====================================
@@ -373,5 +368,12 @@ F.A.Q.
 =====================================
 
 Here is where users will eventually find a list of commonly asked questions that clarify the content of the tool.
+```{r}
+```
+
+Downloads
+=====================================
+
+Here is where users will eventually find a directory of downloadable map files based on preferred formats/use cases.
 ```{r}
 ```
