@@ -10,6 +10,11 @@ resource_files:
 - states/cb_2017_us_state_500k_conus_simple.prj
 - states/cb_2017_us_state_500k_conus_simple.qpj
 - states/cb_2017_us_state_500k_conus_simple.shx
+- www/ResponseCurves_burbuttercup.png
+- www/ResponseCurves_fountaingrass.png
+- www/ResponseCurves_medusahead.png
+- www/ResponseCurves_ravennagrass.png
+- www/ResponseCurves_rushskeletonweed.png
 runtime: shiny
 output:
   flexdashboard::flex_dashboard:
@@ -41,7 +46,7 @@ species_pts = readOGR("pres_pts3857.sqlite")
 states = readOGR("states/cb_2017_us_state_500k_conus_simple.shp", GDAL1_integer64_policy = T)
 mgmt_areas = readOGR("mgmt/mgmt_areas.shp", GDAL1_integer64_policy = T)
 
-mgmt.list = as.list(mgmt_areas$name)
+mgmt.list = sort(mgmt_areas$name)
 sp_list = as.list(read.csv('sp_list.csv', header = T, stringsAsFactors = F))
 sp_dt = read.csv('sp_data_summary.csv', header = T, stringsAsFactors = F)
 sp_dt = sp_dt[order(sp_dt$Est_Suitable_Area_Acres, decreasing = T),]
@@ -105,24 +110,41 @@ Inputs {.sidebar}
 ```{r}
 pickerInput(inputId = 'sp_select', label = 'Species of interest'
             , choices = sp_list$common
-            , width = 'auto'
+            , width = '95%'
             , choicesOpt = list(subtext = paste0("(", sp_list$latin, ')', sep=''))
             , options = list(title = "i.e. Fountaingrass OR Pennisetum", `live-search`=T)
 )
-
-selectizeInput(inputId = 'mgmt'
-               , label = 'Management Areas (Simplified)' 
-               , choices = mgmt.list
-               , width = 'auto'
-               , multiple = T
-               , options=list(placeholder = "i.e. EPMT: Lake Mead"
-                              ,onInitialize = I('function() { this.setValue(""); }'))
-               )
-
-radioButtons(inputId = "pres_button",choices=c("yes","no"), selected = "no", label='Display Occurrence Points?', width = '100%')
 ```
 
-###### <span style="color: grey">If 'yes', the map will display the occurrence points used to build the model.</span>
+___
+
+###### Choose your agency of interest, then select from the drop down:
+```{r}
+
+checkboxGroupButtons(inputId = "mgmt.admin", direction = 'vertical', choices = c('BLM Districts', 'EPMT', "NPS", 'U.S. Counties'), 
+                     status = "primary", individual = T, size = 'sm', selected = 'BLM Districts', 
+                     checkIcon = list(yes = icon("ok", lib = "glyphicon"), no = icon("remove", lib = "glyphicon"))
+)
+
+selectInput(inputId = 'mgmt'
+           , label = ''
+           , choices = character()
+           , width = 'auto'
+           , selected = NULL
+           , multiple = T
+)
+
+observeEvent(input$mgmt.admin, {
+  new.list = character()
+  if('BLM Districts' %in% input$mgmt.admin) new.list = c(new.list,grep(pattern = '*BLM*', mgmt.list, value = T))
+  if('EPMT' %in% input$mgmt.admin) new.list = c(new.list,grep(pattern = '*EPMT*', mgmt.list, value = T))
+  if('NPS' %in% input$mgmt.admin) new.list = c(new.list,as.character(mgmt.list[-grep('(EPMT)|(BLM)|(County)|(City)', mgmt.list)]))
+  if('U.S. Counties' %in% input$mgmt.admin) new.list = c(new.list,grep(pattern = '(County)|(City)', mgmt.list, value = T))
+  updateSelectInput(session, inputId = 'mgmt',choices = new.list)
+})
+
+```
+
 ___
 
 ``` {r}
@@ -148,6 +170,14 @@ radioButtons(inputId = "known_distro",choices=c("yes","no"), selected = "no", la
 ```
 
 ###### <span style="color: grey">If 'yes', the map will display the boundaries of the training data used to build the models.</span>
+
+<br />
+
+```{r}
+radioButtons(inputId = "pres_button",choices=c("yes","no"), selected = "no", label='Display Occurrence Points?', width = '100%')
+```
+
+###### <span style="color: grey">If 'yes', the map will display the occurrence points used to build the model.</span>
 
 Map Output
 =====================================
@@ -368,12 +398,5 @@ F.A.Q.
 =====================================
 
 Here is where users will eventually find a list of commonly asked questions that clarify the content of the tool.
-```{r}
-```
-
-Downloads
-=====================================
-
-Here is where users will eventually find a directory of downloadable map files based on preferred formats/use cases.
 ```{r}
 ```
