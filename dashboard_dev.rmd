@@ -114,8 +114,10 @@ pickerInput(inputId = 'sp_select', label = 'Species of interest'
             , choicesOpt = list(subtext = paste0("(", sp_list$latin, ')', sep=''))
             , options = list(title = "i.e. Fountaingrass OR Pennisetum", `live-search`=T)
 )
+radioButtons(inputId = "pres_button",choices=c("yes","no"), selected = "no", label='Display Occurrence Points?', width = '100%')
 ```
 
+###### <span style="color: grey">If 'yes', the map will display the occurrence points used to build the model.</span>
 ___
 
 ###### Choose your agency of interest, then select from the drop down:
@@ -170,14 +172,6 @@ radioButtons(inputId = "known_distro",choices=c("yes","no"), selected = "no", la
 ```
 
 ###### <span style="color: grey">If 'yes', the map will display the boundaries of the training data used to build the models.</span>
-
-<br />
-
-```{r}
-radioButtons(inputId = "pres_button",choices=c("yes","no"), selected = "no", label='Display Occurrence Points?', width = '100%')
-```
-
-###### <span style="color: grey">If 'yes', the map will display the occurrence points used to build the model.</span>
 
 Map Output
 =====================================
