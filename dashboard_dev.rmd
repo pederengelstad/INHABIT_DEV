@@ -192,17 +192,17 @@ shinyApp(ui = fillPage(tags$style(type = "text/css",
     leaflet(options = leafletOptions(maxZoom = 10)) %>%
       addProviderTiles(providers$CartoDB.DarkMatter, group = "Light", options = providerTileOptions(opacity = 0.8)) %>%
       fitBounds(lat1 = 48.808461, lng1 = -123.967893, lat2 = 24.848766, lng2 = -68.816526) %>%
-      addPolygons(data = states, fill = 0, weight = 1.35, group = "states") %>%
+      addPolygons(data = states, fill = 0, weight = 1.35, group = "states", color = 'white') %>%
       addLegend(position = "topright"
                 , colors = c('#4b0000','#7f0000','#b30000','#d7301f'
                              ,'#ef6548','#fc8d59','#fdbb84'
-                             ,'#fdd49e','#fee8c8','#fff7ec'),
-                labels = c("High","","","","","","","","", "Low"), 
+                             ,'#fdd49e','#fee8c8','#fff7ec','','#363636'),
+                labels = c("High","","","","","","","","", "Low",'','Unsuitable'), 
                 title = "Model Agreement", 
                 opacity = 1,
                 labFormat = ) %>%
       addLegend(position = "bottomright" 
-            , colors = c('blue','green','purple')
+            , colors = c('#00E30B','#000066','#0F3FEB')
             , labels = c("Mgmt Area", "Known Distro","Occ Points"), 
             title = "Data Legend", opacity = 1) %>%
       addScaleBar(position = 'bottomleft', options = scaleBarOptions(maxWidth = 200))
@@ -262,7 +262,7 @@ shinyApp(ui = fillPage(tags$style(type = "text/css",
     if(!is.null(d)){
       leafletProxy("map") %>% 
         clearGroup( 'distro') %>%
-        addPolygons(data=distro_shp(), group='distro', color = "green", fill = 0)
+        addPolygons(data=distro_shp(), group='distro', color = "#000066 ", fill = 0, weight = 3, opacity = 1)
     } else {
       leafletProxy("map") %>%
         clearGroup('distro')
@@ -277,7 +277,9 @@ shinyApp(ui = fillPage(tags$style(type = "text/css",
     if(!is.null(p)){
       leafletProxy("map") %>%
         clearGroup( 'pres_pts') %>%
-        addCircleMarkers(data=pres_pts(), group='pres_pts', color = "purple", radius = 0.3)
+        addCircleMarkers(data=pres_pts(), group='pres_pts', fillColor = "#0F3FEB"
+                         , radius = 3.5, fillOpacity = 1, color = '#62CEDD', weight = 1
+                         )
     } else {
         leafletProxy("map") %>%
           clearGroup( 'pres_pts')
