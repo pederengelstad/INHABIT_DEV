@@ -41,8 +41,8 @@ library(magrittr)
 library(knitr)
 library(kableExtra)
 
-kde_poly = readOGR("kde_3857_final.sqlite", GDAL1_integer64_policy = TRUE)
-species_pts = readOGR("pres_pts3857.sqlite")
+kde_poly = readOGR("kde/kde_boundary_4326_simple.shp", GDAL1_integer64_policy = TRUE)
+species_pts = readOGR("pres_pts/pres_pts_4326.sqlite")
 states = readOGR("states/cb_2017_us_state_500k_conus_simple.shp", GDAL1_integer64_policy = T)
 mgmt_areas = readOGR("mgmt/mgmt_areas.shp", GDAL1_integer64_policy = T)
 
@@ -317,7 +317,7 @@ Data Summary
 #Filtered GAP's 'Fine Agency Level' layer by Mang_Name = 'NPS'
 fillPage(DT::renderDataTable(DT::datatable(sp_dt
               , fillContainer = getOption("DT.fillContainer", TRUE)
-              , caption = "Summary information by National Park for a selected species and EPMT region. 'Known presence' indicates if presence locations from the park were available for model development. 'Established suitable area' is the number of acres suitable when suitability values between 0 and 1 were transformed to unsuitable and suitable categories by allowing 1% of the known locations to be classified as unsuitable. 'Percent of Park' is the percent of the park area that is classified as suitable. 'Minimum distance to Occurrence' is the minimum distance from the park boundary to a known occurrence used in model development. Boundaries generated from NPS IRMA (https://irma.nps.gov/DataStore/Reference/Profile/2224545?lnv=True)"
+              , caption = "This is a sample of summary information by National Parks with more species data to be added in the future. 'Known presence' indicates if presence locations from the park were available for model development. 'Established suitable area' is the number of acres suitable when suitability values between 0 and 1 were transformed to unsuitable and suitable categories by allowing 1% of the known locations to be classified as unsuitable. 'Percent of Park' is the percent of the park area that is classified as suitable. 'Minimum distance to Occurrence' is the minimum distance from the park boundary to a known occurrence used in model development. Boundaries generated from NPS IRMA (https://irma.nps.gov/DataStore/Reference/Profile/2224545?lnv=True)"
               , colnames = c("Species", "EPMT Unit", "National Park", "Known Presence? (Count)"
                              ,"Estimated Suitable Area (Acres)", "Percent of Park Area"
                              ,"Minimum Distance to Occurrence (Miles)")
