@@ -49,7 +49,7 @@ mgmt_areas = readOGR("mgmt/mgmt_areas.shp", GDAL1_integer64_policy = T)
 mgmt.list = sort(mgmt_areas$name)
 sp_list = as.list(read.csv('sp_list.csv', header = T, stringsAsFactors = F))
 sp_dt = read.csv('sp_data_summary.csv', header = T, stringsAsFactors = F)
-sp_dt = sp_dt[order(sp_dt$Est_Suitable_Area_Acres, decreasing = T),]
+sp_dt = sp_dt[order(sp_dt$est_suit_area_acre, decreasing = T),]
 cred.table = read.csv(file = "CredTable.csv", header = T, stringsAsFactors = F, encoding = "ISO-8859-1", fileEncoding = "ISO-8859-1")
 pred.info = read.csv(file = "predictorInformation.csv", header = T, stringsAsFactors = F, encoding = "ISO-8859-1", fileEncoding = "ISO-8859-1")
 
@@ -122,12 +122,12 @@ ___
 ```{r}
 
 checkboxGroupButtons(inputId = "mgmt.admin", direction = 'vertical', choices = c('BLM Districts', 'EPMT', "NPS", 'U.S. Counties'), 
-                     status = "primary", individual = T, size = 'sm', selected = 'BLM Districts', 
+                     status = "primary", individual = T, size = 'sm', selected = c('BLM Districts', 'EPMT', "NPS", 'U.S. Counties'), 
                      checkIcon = list(yes = icon("ok", lib = "glyphicon"), no = icon("remove", lib = "glyphicon"))
 )
 
 selectInput(inputId = 'mgmt'
-           , label = ''
+           , label = 'Start typing the name of a management area'
            , choices = character()
            , width = 'auto'
            , selected = NULL
@@ -313,17 +313,34 @@ Data Summary
 =====================================
 
 ```{r}
+downloadBttn(outputId = 'dl.dt', label = 'Download Selected Data')
+downloadBttn(outputId = 'dl.all', label = paste0('Download All Available Data (', nrow(sp_dt), ' Records)', sep=''))
+
+output$dl.dt = downloadHandler(filename = 'DataSummaryExport.csv', 
+                               content = function(file){
+                                 write.csv(sp_dt[sp_dt$Species==input$sp_select,], file, row.names = F)
+                                 }
+                               )
+
+output$dl.all = downloadHandler(filename = 'DataSummaryExport_All.csv', 
+                               content = function(file){
+                                 write.csv(sp_dt, file, row.names = F)
+                                 }
+                               )
 
 #Filtered GAP's 'Fine Agency Level' layer by Mang_Name = 'NPS'
-fillPage(DT::renderDataTable(DT::datatable(sp_dt
-              , fillContainer = getOption("DT.fillContainer", TRUE)
-              , caption = "This is a sample of summary information by National Parks with more species data to be added in the future. 'Known presence' indicates if presence locations from the park were available for model development. 'Established suitable area' is the number of acres suitable when suitability values between 0 and 1 were transformed to unsuitable and suitable categories by allowing 1% of the known locations to be classified as unsuitable. 'Percent of Park' is the percent of the park area that is classified as suitable. 'Minimum distance to Occurrence' is the minimum distance from the park boundary to a known occurrence used in model development. Boundaries generated from NPS IRMA (https://irma.nps.gov/DataStore/Reference/Profile/2224545?lnv=True)"
-              , colnames = c("Species", "EPMT Unit", "National Park", "Known Presence? (Count)"
-                             ,"Estimated Suitable Area (Acres)", "Percent of Park Area"
-                             ,"Minimum Distance to Occurrence (Miles)")
-              ,rownames = FALSE) %>% 
-  formatStyle(columns = c(1:7), 'text-align' = 'center') %>%
-  DT::formatPercentage(columns = 6)))
+fillPage(DT::renderDataTable(DT::datatable(sp_dt[sp_dt$Species==input$sp_select,],
+              fillContainer = getOption("DT.fillContainer", TRUE),
+              caption = "This is a sample of summary information by National Parks with more species data to be added in the future. 'Known presence' indicates if presence locations from the park were available for model development. 'Established suitable area' is the number of acres suitable when suitability values between 0 and 1 were transformed to unsuitable and suitable categories by allowing 1% of the known locations to be classified as unsuitable. 'Percent of Park' is the percent of the park area that is classified as suitable. 'Minimum distance to Occurrence' is the minimum distance from the park boundary to a known occurrence used in model development. Boundaries generated from NPS IRMA (https://irma.nps.gov/DataStore/Reference/Profile/2224545?lnv=True)",
+              colnames = c("Species", 
+                           "National Park",
+                           "Estimated Suitable Area (Acres)",
+                           "Percent of Park Area",
+                           "Known Presence? (Count)",
+                           "Minimum Distance to Occurrence (Miles)"),
+              rownames = FALSE) %>%
+              formatStyle(columns = c(1:6), 'text-align' = 'center') %>%
+              DT::formatPercentage(columns = 4)))
 ```
 
 Model Credibility Assessment
