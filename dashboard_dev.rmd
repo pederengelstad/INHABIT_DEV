@@ -313,7 +313,7 @@ Data Summary
 =====================================
 
 ```{r}
-downloadBttn(outputId = 'dl.dt', label = 'Download Selected Data')
+downloadBttn(outputId = 'dl.dt', label = 'Download Data for Selected Species')
 downloadBttn(outputId = 'dl.all', label = paste0('Download All Available Data (', nrow(sp_dt), ' Records)', sep=''))
 
 output$dl.dt = downloadHandler(filename = 'DataSummaryExport.csv', 
