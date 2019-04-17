@@ -178,6 +178,8 @@ Map Output
 =====================================
 
 ```{r}
+# This will NOT run with versions of Shiny > 1.2.0 and I don't know why.
+
 shinyApp(ui = fillPage(tags$style(type = "text/css",
     ".half-fill { width: 50%; height: 100%; }",
     "#one { float: left; background-color: #ddddff; }",
@@ -206,20 +208,6 @@ shinyApp(ui = fillPage(tags$style(type = "text/css",
             , labels = c("Mgmt Area", "Known Distro","Occ Points"), 
             title = "Data Legend", opacity = 1) %>%
       addScaleBar(position = 'bottomleft', options = scaleBarOptions(maxWidth = 200))
-      # addEasyButton(button = easyButton(icon = 'glyphicon-globe'
-      #                                   ,title = 'Reset view'
-      #                                   ,onClick = JS("function(btn, map) {
-      #                                                    map.fitBounds([
-      #                                                                  [48.808461, -123.967893],
-      #                                                                  [24.848766, -68.816526]
-      #                                                                  ]);
-      #                                                   var groupLayer = map.layerManager.getLayerGroup('distro');
-      #                                                   groupLayer.clearLayers();
-      #                                                   var groupLayer = map.layerManager.getLayerGroup('pres_pts');
-      #                                                   groupLayer.clearLayers();
-      #                                                   var groupLayer = map.layerManager.getLayerGroup('mgmt');
-      #                                                   groupLayer.clearLayers();
-      #                                                 }") ))
     })
   
   observe({
