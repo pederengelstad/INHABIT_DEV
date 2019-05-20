@@ -44,9 +44,8 @@ library(kableExtra)
 kde_poly = readOGR("kde/kde_boundary_4326_simple.shp", GDAL1_integer64_policy = TRUE)
 species_pts = readOGR("pres_pts/pres_pts_4326.sqlite")
 states = readOGR("states/cb_2017_us_state_500k_conus_simple.shp", GDAL1_integer64_policy = T)
-mgmt_areas = readOGR("mgmt/mgmt_areas.shp", GDAL1_integer64_policy = T)
+mgmt_areas = readOGR("mgmt/mgmt_areas.shp", GDAL1_integer64_policy = T, stringsAsFactors = F)
 
-mgmt.list = sort(mgmt_areas$name)
 sp_list = as.list(read.csv('sp_list.csv', header = T, stringsAsFactors = F))
 sp_dt = read.csv('sp_data_summary.csv', header = T, stringsAsFactors = F)
 sp_dt = sp_dt[order(sp_dt$est_suit_area_acre, decreasing = T),]
@@ -121,8 +120,10 @@ ___
 ###### Choose your agency of interest, then select from the drop down:
 ```{r}
 
-checkboxGroupButtons(inputId = "mgmt.admin", direction = 'vertical', choices = c('BLM Districts', 'EPMT', "NPS", 'U.S. Counties'), 
-                     status = "primary", individual = T, size = 'sm', selected = c('BLM Districts', 'EPMT', "NPS", 'U.S. Counties'), 
+checkboxGroupButtons(inputId = "mgmt.admin", direction = 'vertical', 
+                     choices = c('BLM Districts', 'EPMT', "FWS", "NPS", 'U.S. Counties'), 
+                     status = "primary", individual = T, size = 'sm', 
+                     selected = c('BLM Districts', 'EPMT', 'FWS', "NPS", 'U.S. Counties'), 
                      checkIcon = list(yes = icon("ok", lib = "glyphicon"), no = icon("remove", lib = "glyphicon"))
 )
 
@@ -136,11 +137,12 @@ selectInput(inputId = 'mgmt'
 
 observeEvent(input$mgmt.admin, {
   new.list = character()
-  if('BLM Districts' %in% input$mgmt.admin) new.list = c(new.list,grep(pattern = '*BLM*', mgmt.list, value = T))
-  if('EPMT' %in% input$mgmt.admin) new.list = c(new.list,grep(pattern = '*EPMT*', mgmt.list, value = T))
-  if('NPS' %in% input$mgmt.admin) new.list = c(new.list,as.character(mgmt.list[-grep('(EPMT)|(BLM)|(County)|(City)', mgmt.list)]))
-  if('U.S. Counties' %in% input$mgmt.admin) new.list = c(new.list,grep(pattern = '(County)|(City)', mgmt.list, value = T))
-  updateSelectInput(session, inputId = 'mgmt',choices = new.list)
+  if('BLM Districts' %in% input$mgmt.admin) new.list = c(new.list,mgmt_areas$name[mgmt_areas$cat == 'BLM'])
+  if('EPMT' %in% input$mgmt.admin) new.list = c(new.list,mgmt_areas$name[mgmt_areas$cat == 'EPMT'])
+  if('NPS' %in% input$mgmt.admin) new.list = c(new.list,mgmt_areas$name[mgmt_areas$cat == 'NPS'])
+  if('FWS' %in% input$mgmt.admin) new.list = c(new.list,mgmt_areas$name[mgmt_areas$cat == 'FWS'])
+  if('U.S. Counties' %in% input$mgmt.admin) new.list = c(new.list,mgmt_areas$name[mgmt_areas$cat == 'County'])
+  updateSelectInput(session, inputId = 'mgmt',choices = sort(new.list))
 })
 
 radioButtons(inputId = "pres_button",choices=c("yes","no"), selected = "no", label='Display Occurrence Points?', width = '100%')
